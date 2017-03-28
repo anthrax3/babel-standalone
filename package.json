@@ -21,6 +21,7 @@
     "babel-loader": "6.2.7",
     "babel-plugin-check-es2015-constants": "6.8.0",
     "babel-plugin-external-helpers": "6.18.0",
+    "babel-plugin-inferno": "^1.2.0-beta10",
     "babel-plugin-minify-constant-folding": "0.0.1",
     "babel-plugin-minify-dead-code-elimination": "0.1.0",
     "babel-plugin-minify-empty-function": "0.0.1",
@@ -139,7 +140,7 @@
     "transpile",
     "transpiler"
   ],
-  "author": "Daniel Lo Nigro \u003cdaniel@dan.cx\u003e (http://dan.cx/)",
+  "author": "Daniel Lo Nigro <daniel@dan.cx> (http://dan.cx/)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Daniel15/babel-standalone/issues"

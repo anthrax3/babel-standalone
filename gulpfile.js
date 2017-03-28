@@ -10,7 +10,7 @@ function webpackBuild(filename, libraryName) {
     module: {
       loaders: [
         {
-          exclude: /node_modules/,
+          // exclude: /node_modules/,
           test: /\.js$/,
           loader: 'babel',
           query: {
