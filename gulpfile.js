@@ -1,25 +1,22 @@
 const gulp = require('gulp');
 const lazypipe = require('lazypipe');
+const pump = require('pump');
 const rename = require('gulp-rename');
 const webpack = require('webpack');
 const webpackStream = require('webpack-stream');
 const uglify = require('gulp-uglify');
 
-function webpackBuild(filename, libraryName) {
+function webpackBuild(filename, libraryName, version) {
   const config = {
     module: {
       loaders: [
         {
           // exclude: /node_modules/,
           test: /\.js$/,
-          loader: 'babel',
+          loader: 'babel-loader',
           query: {
             presets: ['es2015', 'stage-0']
           }
-        },
-        {
-          test: /\.json$/,
-          loader: 'json'
         }
       ]
     },
@@ -37,15 +34,20 @@ function webpackBuild(filename, libraryName) {
     },
     plugins: [
       new webpack.DefinePlugin({
-        'process.env.NODE_ENV': '"production"'
+        'process.env.NODE_ENV': '"production"',
+        BABEL_VERSION: JSON.stringify(require('babel-core/package.json').version),
+        VERSION: JSON.stringify(version),
       }),
       // Use browser version of visionmedia-debug
       new webpack.NormalModuleReplacementPlugin(
         /debug\/node/,
-        'debug/browser'
+        'debug/src/browser'
       ),
-      new webpack.optimize.OccurenceOrderPlugin(),
-      new webpack.optimize.DedupePlugin()
+      new webpack.NormalModuleReplacementPlugin(
+        /..\/..\/package/,
+        '../../../../src/babel-package-shim'
+      ),
+      new webpack.optimize.OccurrenceOrderPlugin()
     ]
   };
 
@@ -56,7 +58,7 @@ function webpackBuild(filename, libraryName) {
       'babel-standalone': 'Babel',
     };
   }
-  return webpackStream(config);
+  return webpackStream(config, webpack);
 }
 
 const minifyAndRename = lazypipe()
@@ -66,17 +68,21 @@ const minifyAndRename = lazypipe()
 gulp.task('default', ['build']);
 gulp.task('build', ['build-babel', 'build-babili']);
 
-gulp.task('build-babel', () => {
-  return gulp.src('src/index.js')
-    .pipe(webpackBuild('babel.js', 'Babel'))
-    .pipe(gulp.dest('.'))
-    .pipe(minifyAndRename())
-    .pipe(gulp.dest('.'));
+gulp.task('build-babel', cb => {
+  pump([
+    gulp.src('src/index.js'),
+    webpackBuild('babel.js', 'Babel', require('./package.json').version),
+    gulp.dest('.'),
+    minifyAndRename(),
+    gulp.dest('.'),
+  ], cb);
 });
-gulp.task('build-babili', () => {
-  return gulp.src('src/babili.js')
-    .pipe(webpackBuild('babili.js', 'Babili'))
-    .pipe(gulp.dest('packages/babili-standalone/'))
-    .pipe(minifyAndRename())
-    .pipe(gulp.dest('packages/babili-standalone/'));
+gulp.task('build-babili', cb => {
+  pump([
+    gulp.src('src/babili.js'),
+    webpackBuild('babili.js', 'Babili', require('./packages/babili-standalone/package.json').version),
+    gulp.dest('packages/babili-standalone/'),
+    minifyAndRename(),
+    gulp.dest('packages/babili-standalone/'),
+  ], cb);
 });

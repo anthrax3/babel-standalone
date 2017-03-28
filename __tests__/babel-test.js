@@ -44,17 +44,14 @@ describe('babel-standalone', () => {
     );
   });
 
-  it('handles the react preset', () => {
+  it('handles the inferno JSX', () => {
     const output = Babel.transform(
       'const someDiv = <div>{getMessage()}</div>',
-      {presets: ['react']}
+      {plugins: ['inferno']}
     ).code;
     expect(output).toBe(
-      'const someDiv = React.createElement(\n' +
-      '  "div",\n' +
-      '  null,\n' +
-      '  getMessage()\n' +
-      ');'
+      'var createVNode = Inferno.createVNode;\n' +
+      'const someDiv = createVNode(2, "div", null, getMessage());'
     );
   });
 
