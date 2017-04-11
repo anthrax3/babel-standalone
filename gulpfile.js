@@ -15,7 +15,8 @@ function webpackBuild(filename, libraryName, version) {
           test: /\.js$/,
           loader: 'babel-loader',
           query: {
-            presets: ['es2015', 'stage-0']
+            babelrc: false,
+            presets: [['es2015', {modules: false}], 'stage-0']
           }
         }
       ]
