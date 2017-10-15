@@ -2,13 +2,12 @@
 # package.json to the new version, commits the new package.json, and pushes it to Github.
 
 param(
-  [switch] $Clean = $false
+  [switch] $Clean = $false,
+  [switch] $PublishNpm = $true
 )
 
 $ErrorActionPreference = "Stop";
 Set-StrictMode -Version Latest
-
-. ./scripts/config.ps1
 
 ############################
 
@@ -71,7 +70,7 @@ function New-GitHubRelease(
   [Parameter(Mandatory)] [String] $Version
 ) {
   Invoke-RestMethod `
-    -Uri ('https://api.github.com/repos/{0}/{1}/releases?access_token={2}' -f $global:config.github_user, $global:config.github_repo, $global:config.github_token) `
+    -Uri ('https://api.github.com/repos/{0}/{1}/releases?access_token={2}' -f $Env:GITHUB_USER, $Env:GITHUB_REPO, $Env:GITHUB_TOKEN) `
     -Method Post `
     -Body (@{
       body = 'Automated upgrade to Babel ' + $version
@@ -88,15 +87,22 @@ function Add-GitHubReleaseAsset(
   $filename = Split-Path -Path $Path -Leaf
   $upload_url = $release.upload_url -replace '{.+', ''
   Invoke-WebRequest `
-    -Uri ('{0}?name={1}&access_token={2}' -f $upload_url, $filename, $global:config.github_token) `
+    -Uri ('{0}?name={1}&access_token={2}' -f $upload_url, $filename, $Env:GITHUB_TOKEN) `
     -Method Post `
-    -ContentType 'text/javascript' `
+    -ContentType 'text/javascript; charset=utf-8' `
+    -UseBasicParsing `
     -Body (Get-Content -Path $Path -Raw -Encoding UTF8) | Out-Null
 
-    Write-Output ('Uploaded ' + $filename)
+  Write-Output ('Uploaded ' + $filename)
 }
 
 ############################
+
+# Ensure environment is good
+if (!$Env:GITHUB_USER -or !$Env:GITHUB_REPO -or !$Env:GITHUB_TOKEN) {
+  Write-Error 'GITHUB_USER, GITHUB_REPO and GITHUB_TOKEN must be set'
+  Exit 1
+}
 
 if ($Clean) {
   Write-Output "Cleaning working directory"
@@ -105,10 +111,15 @@ if ($Clean) {
   git pull
 }
 
-.\node_modules\.bin\npm-check-updates -a /^babel/; Assert-LastExitCode
+# We need to run npm install in order to be able to use npm-check-updates
+npm install; Assert-LastExitCode
+#.\node_modules\.bin\npm-check-updates -u -a --packageFile ./package.json /^babel\-(plugin|preset|core)/; Assert-LastExitCode
+.\node_modules\.bin\npm-check-updates -u -a --packageFile ./package.json /^babel\-plugin/; Assert-LastExitCode
+.\node_modules\.bin\npm-check-updates -u -a --packageFile ./package.json /^babel\-preset/; Assert-LastExitCode
+.\node_modules\.bin\npm-check-updates -u -a --packageFile ./package.json /^babel\-core/; Assert-LastExitCode
 
 $package_json = Get-Content -Path package.json | ConvertFrom-Json
-$babel_version = Get-LatestDependencyVersion -Package $package_json -Filter 'babel\-'
+$babel_version = Get-LatestDependencyVersion -Package $package_json -Filter 'babel\-(plugin|preset|core)'
 if (([Version]$package_json.version) -ge $babel_version) {
   Write-Output ('Current version ({0}) is the latest' -f $package_json.version)
   Exit
@@ -117,6 +128,10 @@ if (([Version]$package_json.version) -ge $babel_version) {
 Write-Output ('Current version is {0}, latest Babel version is {1}' -f $package_json.version, $babel_version)
 
 Set-PackageVersion -Package $package_json -Version $babel_version
+# Re-run npm install fresh in order to install any updated packages
+# This clears out the node_modules directory so that it has the most efficient
+# directory structure possible.
+Remove-Item node_modules -Recurse
 npm install; Assert-LastExitCode
 
 Write-Output 'Building and running tests'
@@ -130,9 +145,6 @@ git tag -a ('release-' + $babel_version) -m ('Automated upgrade to Babel {0}' -f
 # Push to Github
 git push origin master --follow-tags; Assert-LastExitCode
 
-# Push to npm
-npm publish
-
 # Push to GitHub releases
 Write-Output "Creating GitHub release..."
 $release = New-GitHubRelease -Version $babel_version
@@ -140,5 +152,10 @@ Add-GitHubReleaseAsset -Release $release -Path ./babel.js
 Add-GitHubReleaseAsset -Release $release -Path ./babel.min.js
 Add-GitHubReleaseAsset -Release $release -Path ./packages/babili-standalone/babili.js
 Add-GitHubReleaseAsset -Release $release -Path ./packages/babili-standalone/babili.min.js
+
+# Push to npm
+if ($PublishNpm) {
+  npm publish
+}
 
 Write-Output 'DONE!'

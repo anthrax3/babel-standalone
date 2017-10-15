@@ -72,7 +72,7 @@ export function transformFromAst(ast, code, options) {
 }
 export const availablePlugins = {};
 export const availablePresets = {};
-
+export const buildExternalHelpers = Babel.buildExternalHelpers;
 /**
  * Registers a named plugin for use with Babel.
  */
@@ -112,6 +112,7 @@ export function registerPresets(newPresets) {
 registerPlugins({
   'check-es2015-constants': require('babel-plugin-check-es2015-constants'),
   'external-helpers': require('babel-plugin-external-helpers'),
+  'inline-replace-variables': require('babel-plugin-inline-replace-variables'),
   'syntax-async-functions': require('babel-plugin-syntax-async-functions'),
   'syntax-async-generators': require('babel-plugin-syntax-async-generators'),
   'syntax-class-constructor-call': require('babel-plugin-syntax-class-constructor-call'),
@@ -256,9 +257,16 @@ export const version = VERSION;
 
 // Listen for load event if we're in a browser and then kick off finding and
 // running of scripts with "text/babel" type.
-const transformScriptTags = () => runScripts(transform);
 if (typeof window !== 'undefined' && window && window.addEventListener) {
-  window.addEventListener('DOMContentLoaded', transformScriptTags, false);
+  window.addEventListener('DOMContentLoaded', () => transformScriptTags(), false);
+}
+
+/**
+ * Transform <script> tags with "text/babel" type.
+ * @param {Array} scriptTags specify script tags to transform, transform all in the <head> if not given
+ */
+export function transformScriptTags(scriptTags) {
+  runScripts(transform, scriptTags);
 }
 
 /**
