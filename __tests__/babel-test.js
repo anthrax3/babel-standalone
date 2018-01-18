@@ -135,4 +135,14 @@ describe('babel-standalone', () => {
       );
     });
   });
+
+  // describe('Inferno plugin', () => {
+  //   it('Should transform JSX to createVNode calls', () => {
+  //     const output = Babel.transform(
+  //       '<div>1</div>',
+  //       {plugins: ['inferno']}
+  //     );
+  //     expect(output.code).toBe(`var createVNode = Inferno.createVNode,createTextVNode = Inferno.createTextVNode;createVNode(1, "div", null, createTextVNode("1"), 2);`);
+  //   });
+  // });
 });
