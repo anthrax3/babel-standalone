@@ -51,7 +51,7 @@ describe('babel-standalone', () => {
     ).code;
     expect(output).toBe(
       'var createVNode = Inferno.createVNode;\n' +
-      'const someDiv = createVNode(2, "div", null, getMessage());'
+      'const someDiv = createVNode(1, "div", null, getMessage(), 0);'
     );
   });
 
